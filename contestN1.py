@@ -67,10 +67,18 @@ for dirname, dirnames, filenames in os.walk('contestdata'):
 d = numpy.array(d)
 d_min = d.min(axis=(0, 1), keepdims=True)
 d_max = d.max(axis=(0, 1), keepdims=True)
-dscaled = ((d - d_min)/(d_max - d_min))*2-1
+# dscaled = ((d - d_min)/(d_max - d_min))*2-1
 
-dscaled_zeromean = (dscaled-dscaled.mean(axis=(0,1)))/dscaled.std(axis=(0,1))
 
+print(d.max(axis=(0,1)))  # d原始資料最大值 [4.19083850e-04 8.54607292e-04 3.32002599e-04 9.34526083e-05]
+print(d.min(axis=(0,1)))  # d原始資料最小值 [2.80511371e-09 1.31716758e-09 5.27894631e-09 2.50920048e-09]
+
+
+dscaled_zeromean = (d-d.mean(axis=(0,1)))/d.std(axis=(0,1))
+
+print(dscaled_zeromean.mean(axis=(0,1)))
+print(dscaled_zeromean.max(axis=(0,1)))
+print(dscaled_zeromean.min(axis=(0,1)))
 
 ans = numpy.array(ans).astype('float32')
 ans2d = numpy.array(ans2d).astype('float32')
@@ -85,11 +93,22 @@ ans2d_min = ans2d.min(axis=(0), keepdims=True)
 ans2d_max = ans2d.max(axis=(0), keepdims=True)
 ans2d = ((ans2d - ans2d_min)/(ans2d_max - ans2d_min))*2-1
 
-ans2d_zeromean = (ans2d - ans2d.mean(axis=0))/ans2d.std(axis=0)
+print(ans2d.max(axis=0))
+print(ans2d.min(axis=0))
 
 
-X_train,y_train = dscaled_zeromean[:-10,:,:],ans2d_zeromean[:-10,:]
-X_test,y_test = dscaled_zeromean[:,:,:],ans2d_zeromean[:,:]
+print(ans2dor.max(axis=(0)))  #ans2dor原始資料最大值 [1.1181]
+print(ans2dor.min(axis=(0)))  #ans2dor原始資料最小值 [0.306]
+ans2d_zeromean = (ans2dor - ans2dor.mean(axis=0))/ans2dor.std(axis=0)
+
+
+X_train,y_train = dscaled_zeromean[:-10,:,:],ans2d[:-10,:]
+X_test,y_test = dscaled_zeromean[:,:,:],ans2d[:,:]
+
+print(X_train.max(axis=(0,1)))
+print(X_train.min(axis=(0,1)))
+print(y_train.max(axis=0))
+print(y_train.min(axis=0))
 
 
 
@@ -121,7 +140,7 @@ model2.add(LSTM(128,batch_input_shape=(1,7500,4),return_sequences=True,activatio
 model2.add(LSTM(64,batch_input_shape=(1,7500,4),return_sequences=False,activation='tanh',stateful=True))
 model2.add(Dense(8,activation='tanh'))
 model2.add(Dense(1,activation='tanh'))
-adam = keras.optimizers.Adam(lr=0.0001)
+adam = keras.optimizers.Adam(lr=0.000001)
 
 model2.compile(loss=root_mean_squared_error, optimizer=adam)
 losstraing = []
@@ -139,12 +158,12 @@ for i in range(ep):
     if i ==0:
         pass
     elif i>0:
-     if history.history['loss'] < losstraing[i-1]:
-        print('前一次的loss : ',losstraing[i-1],' 大於這次的loss : ',history.history['loss'],' 儲存model')
+     if history.history['loss'] < min(losstraing):
+        print(history.history['loss'],"\t")
         model2.save('firsttryN1')
         model2.save_weights('firsttryN1_weight')
-    else:
-        print('前一次的loss : ', losstraing[i - 1], ' 小於或等於這次的loss : ', history.history['loss'], ' 不儲存model')
+     else:
+        prin('不儲存model')
 
     losstraing.append(history.history['loss'])
 
@@ -164,10 +183,10 @@ plt.show()
 
 model = load_model('firsttryN1',custom_objects={ 'root_mean_squared_error':root_mean_squared_error })
 model.compile(loss=root_mean_squared_error, optimizer='adam')
-predictions = model.predict(X_test,batch_size=1)
+predictions = model.predict(dscaled_zeromean,batch_size=1)
 
-print(predictions)
-print(y_test)
+print(predictions)    #
+print(ans2d_zeromean)
 
 print('Root mean squared error of prediction all',numpy.sqrt(numpy.mean((predictions[:,:]-y_test[:,:])**2)))
 print('Root mean squared error of prediction top30',numpy.sqrt(numpy.mean((predictions[:30,:]-y_test[:30,:])**2)))
@@ -175,7 +194,7 @@ print('Root mean squared error of prediction last10',numpy.sqrt(numpy.mean((pred
 
 
 predictions = predictions.ravel()
-y_test  = y_test.ravel()
+y_test  = ans2d_zeromean.ravel()
 
 x = numpy.linspace(1,40,40)
 print(x)
@@ -183,20 +202,21 @@ plt.plot(x,predictions,label='predictions')
 plt.plot(x,y_test,label='y_test')
 plt.legend()
 plt.show()
-print('\n\t============================\t\n')
-X_test,y_test = d[-10:,:,:],ans2dor[:,:]
-print(X_test)
-print(y_test)
-y_test_r = ((ans2d+1)/2)*(ans2d_max-ans2d_min)+ans2d_min
-plt.plot(x,ans2dor,label='ans2dor')
-plt.plot(x,ans2d,label='ans2d')
-plt.legend()
-plt.show()
-predictions_r =  ((predictions+1)/2)*(ans2dor.max(axis=(0))-ans2dor.min(axis=(0)))+ans2dor.min(axis=(0))
-plt.plot(x,predictions_r,label='predictions_r')
 
-plt.plot(x,y_test_r,label='y_test_r')
-plt.legend()
-plt.show()
+# print('\n\t============================\t\n')
+# X_test,y_test = d[-10:,:,:],ans2dor[:,:]
+# print(X_test)
+# print(y_test)
+# y_test_r = ((ans2d+1)/2)*(ans2d_max-ans2d_min)+ans2d_min
+# plt.plot(x,ans2dor,label='ans2dor')
+# plt.plot(x,ans2d,label='ans2d')
+# plt.legend()
+# plt.show()
+# predictions_r =  ((predictions+1)/2)*(ans2dor.max(axis=(0))-ans2dor.min(axis=(0)))+ans2dor.min(axis=(0))
+# plt.plot(x,predictions_r,label='predictions_r')
+#
+# plt.plot(x,y_test_r,label='y_test_r')
+# plt.legend()
+# plt.show()
 
 
